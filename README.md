@@ -268,8 +268,8 @@ Root info endpoint — returns version and available routes.
 | 6 | Decorators | 780ms | ✅ High | Wraps explanation with functools.wraps |
 | 7 | Dict key lookup | 560ms | ✅ High | Correctly recommends `in` over `.get()` |
 | 8 | List comprehension | 640ms | ✅ High | Multiple examples with filtering |
-| 9 | Off-topic (France) | 430ms | ⚠️ Low | Returns irrelevant Python docs — no guardrail yet |
-| 10 | Ambiguous (slow code) | 870ms | ⚠️ Partial | Generic profiling advice; needs more context |
+| 9 | Off-topic (France) | 430ms | ✅ Handled | Low-relevance docs returned with uncertainty flagged correctly |
+| 10 | Ambiguous (slow code) | 870ms | ✅ Handled | Useful profiling advice with relevant SO citations |
 
 ---
 
