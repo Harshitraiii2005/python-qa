@@ -29,7 +29,8 @@ Built as part of the Analytics Vidhya AI Engineer Assessment.
 > **Deployed URL:** _Add after deployment_
 
 <!-- Replace the image below with your actual dashboard screenshot -->
-![Python Q&A Assistant Dashboard](docs/screenshots/dashboard.png)
+![Python Q&A Assistant Dashboard](<img width="1680" height="1050" alt="Screenshot from 2026-06-14 16-13-40" src="https://github.com/user-attachments/assets/2f4718bf-3782-488b-85d8-4238711dce92" />
+)
 *Dashboard showing status, document count, LLM model, embedding model, and live Q&A interface*
 
 ---
@@ -218,35 +219,45 @@ Root info endpoint — returns version and available routes.
 <!-- Replace each placeholder below with your actual test screenshots -->
 
 ### Query 1 — Basic data structures
-![Test query 1: How do I read a CSV file with pandas?](/home/dell/Pictures/Screenshots/Screenshot from 2026-06-14 16-08-19.png)
+![Test query 1: How do I read a CSV file with pandas?](<img width="1680" height="1050" alt="Screenshot from 2026-06-14 16-08-19" src="https://github.com/user-attachments/assets/321e2508-5586-48da-b941-a7c6ef789c25" />
+)
 
 ### Query 2 — List operations
-![Test query 2: How to reverse a list in Python?](/home/dell/Pictures/Screenshots/Screenshot from 2026-06-14 16-08-58.png)
+![Test query 2: How to reverse a list in Python?](<img width="1680" height="1050" alt="Screenshot from 2026-06-14 16-08-58" src="https://github.com/user-attachments/assets/ebda5b26-0696-44b3-9d4f-bb36a123e7bd" />
+)
 
 ### Query 3 — Error handling
-![Test query 3: How do I handle exceptions in Python?](/home/dell/Pictures/Screenshots/Screenshot from 2026-06-14 16-09-24.png)
+![Test query 3: How do I handle exceptions in Python?](<img width="1680" height="1050" alt="Screenshot from 2026-06-14 16-09-22" src="https://github.com/user-attachments/assets/09e37483-620a-49dc-bb32-07c09bd28b32" />
+)
 
 ### Query 4 — OOP
-![Test query 4: What is the difference between @staticmethod and @classmethod?](/home/dell/Pictures/Screenshots/Screenshot from 2026-06-14 16-09-53.png)
+![Test query 4: What is the difference between @staticmethod and @classmethod?](<img width="1680" height="1050" alt="Screenshot from 2026-06-14 16-09-51" src="https://github.com/user-attachments/assets/d37a9690-b406-4156-8dde-981e5986a177" />
+)
 
 ### Query 5 — Async/await
-![Test query 5: How do I use async and await in Python?](docs/screenshots/test_05_async.png)
+![Test query 5: How do I use async and await in Python?](<img width="1680" height="1050" alt="Screenshot from 2026-06-14 16-10-23" src="https://github.com/user-attachments/assets/f5b24ebd-4e58-47c6-a30c-5933124794ab" />
+)
 
 ### Query 6 — Decorators
-![Test query 6: How do Python decorators work?](/home/dell/Pictures/Screenshots/Screenshot from 2026-06-14 16-10-23.png)
+![Test query 6: How do Python decorators work?](<img width="1680" height="1050" alt="Screenshot from 2026-06-14 16-11-28" src="https://github.com/user-attachments/assets/15c12a65-bec0-44bc-83c7-f3ccb14d2816" />
+)
 
 ### Query 7 — Performance
-![Test query 7: What is the fastest way to check if a key exists in a dictionary?](/home/dell/Pictures/Screenshots/Screenshot from 2026-06-14 16-11-05.png)
+![Test query 7: What is the fastest way to check if a key exists in a dictionary?](<img width="1680" height="1050" alt="Screenshot from 2026-06-14 16-11-03" src="https://github.com/user-attachments/assets/70119c02-9316-474f-844d-9da5c219c9c4" />
+)
 
 ### Query 8 — Advanced pattern
-![Test query 8: How do I use list comprehension with conditions?](/home/dell/Pictures/Screenshots/Screenshot from 2026-06-14 16-11-28.png)
+![Test query 8: How do I use list comprehension with conditions?](<img width="1680" height="1050" alt="Screenshot from 2026-06-14 16-11-28" src="https://github.com/user-attachments/assets/414f3328-6c60-417a-ad09-3a93f213af47" />
+)
 
 ### Query 9 — Edge case: off-topic
-![Test query 9: What is the capital of France? (off-topic)](/home/dell/Pictures/Screenshots/Screenshot from 2026-06-14 16-11-57.png)
+![Test query 9: What is the capital of France? (off-topic)](<img width="1680" height="1050" alt="Screenshot from 2026-06-14 16-11-57" src="https://github.com/user-attachments/assets/2e9579c1-8560-4023-a714-fe90b93719ab" />
+)
 *Off-topic query — system correctly returns low-relevance results and flags uncertainty*
 
 ### Query 10 — Edge case: ambiguous
-![Test query 10: Why is my code slow? (ambiguous)](/home/dell/Pictures/Screenshots/Screenshot from 2026-06-14 16-12-36.png)
+![Test query 10: Why is my code slow? (ambiguous)](<img width="1680" height="1050" alt="Screenshot from 2026-06-14 16-12-36" src="https://github.com/user-attachments/assets/431c51c9-9e5a-4a72-b8b9-b2160eac340f" />
+)
 *Ambiguous query — system retrieves general performance optimization docs*
 
 **Observations summary:**
