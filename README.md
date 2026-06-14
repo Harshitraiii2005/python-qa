@@ -26,7 +26,7 @@ Built as part of the Analytics Vidhya AI Engineer Assessment.
 
 ## Live Demo
 
-> **Deployed URL:** _Add after deployment_
+> **Deployed URL:** https://xlm5bw51-5001.inc1.devtunnels.ms/
 
 ![Python Q&A Assistant Dashboard](https://github.com/user-attachments/assets/2f4718bf-3782-488b-85d8-4238711dce92)
 *Dashboard showing status, document count, LLM model, embedding model, and live Q&A interface*
