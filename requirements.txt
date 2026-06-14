@@ -11,3 +11,7 @@ pytest>=8.1.0
 pytest-asyncio>=0.23.0
 python-dotenv>=1.0.0
 kaggle
+# Google Drive integration
+google-api-python-client>=2.100.0
+google-auth>=2.23.0
+google-auth-httplib2>=0.1.1

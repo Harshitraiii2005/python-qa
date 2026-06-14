@@ -1,7 +1,3 @@
-"""
-RAG Pipeline: ingest → embed → retrieve → generate
-Uses ChromaDB (local) + sentence-transformers + Groq (free, fast)
-"""
 from __future__ import annotations
 
 import asyncio
@@ -9,6 +5,7 @@ import logging
 import os
 import re
 import time
+from pathlib import Path
 from typing import Optional
 
 from groq import Groq
@@ -37,20 +34,28 @@ class RAGPipeline:
     # ------------------------------------------------------------------ #
 
     async def initialize(self):
-        """Load or build the vector store, then mark ready."""
+        """Full startup: restore or build index, then mark ready."""
         loop = asyncio.get_event_loop()
         await loop.run_in_executor(None, self._sync_init)
 
     def _sync_init(self):
-        logger.info("Initialising RAG pipeline …")
+        logger.info("=" * 60)
+        logger.info("RAG Pipeline startup")
+        logger.info("=" * 60)
         t0 = time.time()
 
-        # Embedding function (runs locally, no API key needed)
+        # Step 1 — embedding function (local, no API needed)
+        logger.info("[1/5] Loading embedding model: %s", settings.embedding_model)
         self._embed_fn = SentenceTransformerEmbeddingFunction(
             model_name=settings.embedding_model
         )
 
-        # Vector store
+        # Step 2 — try to restore chroma_db from Google Drive
+        logger.info("[2/5] Checking Google Drive for existing index…")
+        restored = self._try_restore_from_drive()
+
+        # Step 3 — open / create the ChromaDB collection
+        logger.info("[3/5] Opening ChromaDB at %s", settings.chroma_persist_dir)
         os.makedirs(settings.chroma_persist_dir, exist_ok=True)
         self._client = chromadb.PersistentClient(path=settings.chroma_persist_dir)
         self._collection = self._client.get_or_create_collection(
@@ -59,30 +64,156 @@ class RAGPipeline:
             metadata={"hnsw:space": "cosine"},
         )
 
-        # Ingest data only when collection is empty
+        # Step 4 — ingest if collection is empty (first run or Drive unavailable)
         if self._collection.count() == 0:
-            logger.info("Collection empty — ingesting data …")
+            logger.info("[4/5] Collection empty — building index from scratch…")
+            self._ensure_data()
             self._ingest()
+            # Upload fresh index to Drive for next time
+            self._upload_to_drive()
         else:
-            logger.info("Collection has %d docs — skipping ingest.", self._collection.count())
+            logger.info(
+                "[4/5] Collection has %d docs — skipping ingest.",
+                self._collection.count(),
+            )
 
-        # Groq client
+        # Step 5 — Groq LLM client
+        logger.info("[5/5] Initialising Groq LLM client…")
         api_key = settings.groq_api_key or os.getenv("GROQ_API_KEY", "")
         if not api_key:
             logger.warning("GROQ_API_KEY not set — /ask will fail at generation step.")
         self._llm = Groq(api_key=api_key)
 
         self._ready = True
-        logger.info("RAG pipeline ready in %.1fs", time.time() - t0)
+        logger.info("RAG pipeline ready in %.1fs  (%d docs)", time.time() - t0, self._collection.count())
+        logger.info("=" * 60)
+
+    # ------------------------------------------------------------------ #
+    # Drive helpers                                                         #
+    # ------------------------------------------------------------------ #
+
+    def _try_restore_from_drive(self) -> bool:
+        try:
+            from app.core.gdrive import download_chroma_from_drive
+            return download_chroma_from_drive(settings.chroma_persist_dir)
+        except Exception as e:
+            logger.warning("Drive restore skipped: %s", e)
+            return False
+
+    def _upload_to_drive(self):
+        try:
+            from app.core.gdrive import upload_chroma_to_drive
+            upload_chroma_to_drive(settings.chroma_persist_dir)
+        except Exception as e:
+            logger.warning("Drive upload skipped: %s", e)
+
+    # ------------------------------------------------------------------ #
+    # Data acquisition                                                      #
+    # ------------------------------------------------------------------ #
+
+    def _ensure_data(self):
+        """
+        Make sure the processed CSV exists.
+        If not, download from Kaggle and merge Questions + Answers.
+        """
+        csv_path = Path(settings.data_path)
+
+        if csv_path.exists():
+            logger.info("Data CSV already exists at %s — skipping download.", csv_path)
+            return
+
+        logger.info("Data CSV not found — downloading from Kaggle…")
+        self._download_from_kaggle(csv_path)
+
+    def _download_from_kaggle(self, out_csv: Path):
+        """Download the Stack Overflow Python Questions dataset and merge CSVs."""
+        # Set Kaggle credentials
+        username = settings.kaggle_username or os.getenv("KAGGLE_USERNAME", "")
+        key = settings.kaggle_key or os.getenv("KAGGLE_KEY", "")
+
+        if not username or not key:
+            raise RuntimeError(
+                "KAGGLE_USERNAME and KAGGLE_KEY must be set to download the dataset."
+            )
+
+        os.environ["KAGGLE_USERNAME"] = username
+        os.environ["KAGGLE_KEY"] = key
+
+        try:
+            import kaggle
+        except ImportError:
+            raise ImportError("Run: pip install kaggle")
+
+        data_dir = out_csv.parent
+        data_dir.mkdir(parents=True, exist_ok=True)
+
+        logger.info("Authenticating with Kaggle…")
+        kaggle.api.authenticate()
+
+        logger.info("Downloading stackoverflow/pythonquestions → %s", data_dir)
+        kaggle.api.dataset_download_files(
+            "stackoverflow/pythonquestions",
+            path=str(data_dir),
+            unzip=True,
+            quiet=False,
+        )
+        logger.info("Download complete.")
+
+        # Merge Questions + Answers
+        self._merge_csvs(data_dir, out_csv)
+
+    def _merge_csvs(self, data_dir: Path, out_csv: Path):
+        """Merge Questions.csv + Answers.csv into a single enriched CSV."""
+        q_path = data_dir / "Questions.csv"
+        a_path = data_dir / "Answers.csv"
+
+        logger.info("Loading Questions.csv…")
+        questions = pd.read_csv(
+            q_path, encoding="latin-1",
+            usecols=["Id", "Title", "Body", "Score"]
+        )
+        questions = questions[questions["Score"] >= 1].dropna()
+
+        if a_path.exists():
+            logger.info("Loading Answers.csv and merging best answers…")
+            answers = pd.read_csv(
+                a_path, encoding="latin-1",
+                usecols=["ParentId", "Body", "Score"]
+            )
+            best = (
+                answers.sort_values("Score", ascending=False)
+                .groupby("ParentId")
+                .first()
+                .reset_index()
+                .rename(columns={"ParentId": "Id", "Body": "BestAnswer"})
+            )
+            df = questions.merge(best[["Id", "BestAnswer"]], on="Id", how="left")
+            df["Body"] = df.apply(
+                lambda r: r["Body"] + (
+                    f"\n\nBest Answer:\n{r['BestAnswer']}"
+                    if pd.notna(r.get("BestAnswer")) else ""
+                ),
+                axis=1,
+            )
+            df.drop(columns=["BestAnswer"], inplace=True, errors="ignore")
+        else:
+            df = questions
+
+        df.to_csv(out_csv, index=False, encoding="utf-8")
+        logger.info("Merged CSV saved → %s  (%d rows)", out_csv, len(df))
+
+    # ------------------------------------------------------------------ #
+    # Ingest                                                                #
+    # ------------------------------------------------------------------ #
 
     def _ingest(self):
-        """Read CSV, clean, chunk, and upsert into ChromaDB."""
+        """Read CSV, clean, and upsert into ChromaDB."""
         path = settings.data_path
         if not os.path.exists(path):
             logger.warning("Data file not found at %s — collection will be empty.", path)
             return
 
-        logger.info("Loading %s …", path)
+        logger.info("Loading %s (max %d rows)…", path, settings.max_documents)
         df = pd.read_csv(path, nrows=settings.max_documents)
 
         required = {"Title", "Body", "Score"}
@@ -96,8 +227,7 @@ class RAGPipeline:
 
         df = df[df["Score"] >= 1].dropna(subset=["Body"]).reset_index(drop=True)
         df = df.head(settings.max_documents)
-
-        logger.info("Ingesting %d documents …", len(df))
+        logger.info("Ingesting %d documents…", len(df))
 
         documents, metadatas, ids = [], [], []
         for idx, row in df.iterrows():
@@ -122,7 +252,7 @@ class RAGPipeline:
             )
             logger.info("  upserted %d / %d", min(end, len(documents)), len(documents))
 
-        logger.info("Ingestion complete. Total: %d", self._collection.count())
+        logger.info("Ingestion complete. Total docs: %d", self._collection.count())
 
     # ------------------------------------------------------------------ #
     # Retrieval + Generation                                               #
@@ -131,14 +261,12 @@ class RAGPipeline:
     async def ask(self, question: str) -> dict:
         if not self._ready:
             raise HTTPException(503, "RAG pipeline not ready yet — try again in a moment.")
-
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self._sync_ask, question)
 
     def _sync_ask(self, question: str) -> dict:
         t0 = time.time()
 
-        # --- Retrieve ---
         results = self._collection.query(
             query_texts=[question],
             n_results=settings.top_k,
@@ -158,12 +286,10 @@ class RAGPipeline:
             for m, d in zip(metas, distances)
         ]
 
-        # --- Build context ---
         context = "\n\n---\n\n".join(
             f"[Source {i+1}] {doc}" for i, doc in enumerate(docs)
         )
 
-        # --- Generate via Groq ---
         system = (
             "You are a Python programming tutor. "
             "Answer the user's question using ONLY the provided Stack Overflow context. "
@@ -189,12 +315,16 @@ Answer (cite sources):"""
         answer = response.choices[0].message.content
 
         return {
-            "question": question,
-            "answer":   answer,
-            "sources":  sources,
+            "question":   question,
+            "answer":     answer,
+            "sources":    sources,
             "latency_ms": round((time.time() - t0) * 1000),
-            "model":    settings.llm_model,
+            "model":      settings.llm_model,
         }
+
+    # ------------------------------------------------------------------ #
+    # Status                                                                #
+    # ------------------------------------------------------------------ #
 
     @property
     def ready(self) -> bool:
